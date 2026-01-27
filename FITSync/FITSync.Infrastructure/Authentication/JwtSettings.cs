@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 namespace FITSync.Infrastructure.Authentication
 {
-    internal class JwtSettings
+    public class JwtSettings
     {
+        public const string SectionName = "JwtSettings";
+        public string? SecretKey { get; init; }
+        public string? ValidIssuer { get; init; }
+        public string? ValidAudience { get; init; }
+        public TimeSpan Expires { get; init; }
     }
 }

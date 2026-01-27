@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace FITSync.Infrastructure.Helpers
 {
-    internal class ICaller
+    public interface ICaller
     {
+        public string UserId { get; }
+        public string ToString();
     }
 }
