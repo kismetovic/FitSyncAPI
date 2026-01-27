@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace FITSync.Domain.Enums
 {
-    internal class PaymentProvider
+    public enum PaymentProvider
     {
+        Stripe = 0,
+        PayPal = 1,
+        Cash = 2
     }
 }

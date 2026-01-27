@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace FITSync.Domain.Enums
 {
-    internal class TrainingDifficulty
+    public enum TrainingDifficulty
     {
+        Beginner = 0,
+        Intermediate = 1,
+        Advanced = 2
     }
 }

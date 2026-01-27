@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 namespace FITSync.Domain.Enums
 {
-    internal class ReservationStatus
+    public enum ReservationStatus
     {
+        Initial = 0,
+        Approved = 1,
+        Paid = 2,
+        Cancelled = 3,
+        Completed = 4
     }
 }
