@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 namespace FITSync.Infrastructure.Repositories.Interfaces
 {
-    internal class IBaseRepository
+    public interface IBaseRepository<TModel> where TModel : class
     {
+        Task<List<TModel>> GetAsync();
+        Task<TModel> GetByIdAsync(int id);
+        Task<TModel> InsertAsync(TModel entity);
+        Task<TModel> UpdateAsync(TModel entity);
+        Task DeleteAsync(TModel entity);
     }
 }
