@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Factories\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AutoMapper — versions must match; extensions package merged into AutoMapper 13+,
+         but 12.x is the last line that targets netstandard2.0/net6 with no breaking changes -->
+    <PackageReference Include="AutoMapper" Version="12.0.1" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+
+    <PackageReference Include="MailKit" Version="4.10.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+
+    <!-- ASP.NET Core / EF Core — all pinned to the same 8.0.23 patch -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.23" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.23" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.23" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.23" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="8.0.23" />
+
+    <!-- Extensions — only packages used directly; transitive ones (DI.Abstractions,
+         Configuration.Abstractions, Hosting.Abstractions, etc.) are resolved automatically
+         to the version required by the packages above (>= 8.0.2). Pinning them to 8.0.0
+         caused NU1605 "Warning As Error" downgrades. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FITSync.Contracts\FITSync.Contracts.csproj" />
+    <ProjectReference Include="..\FITSync.Domain\FITSync.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
