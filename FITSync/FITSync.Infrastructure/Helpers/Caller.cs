@@ -1,22 +1,18 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Infrastructure.Extensions;
+using Microsoft.AspNetCore.Http;
 
 namespace FITSync.Infrastructure.Helpers
 {
     public class Caller : ICaller
     {
-        private int userID;
-        public Caller(HttpContext httpContext)
+        private readonly string? _userId;
+
+        public Caller(IHttpContextAccessor httpContextAccessor)
         {
-            var userid = httpContext.GetUserID();
-            if (userid == null)
-                throw new Exception("User id not found");
-            this.userID = int.Parse(userid);
+            _userId = httpContextAccessor.HttpContext?.GetUserID();
         }
-        public string UserId => userID.ToString();
+
+        public string? UserId => _userId;
+        public bool IsAuthenticated => !string.IsNullOrEmpty(_userId);
     }
 }

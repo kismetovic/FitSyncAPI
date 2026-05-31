@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Contracts.Dashboard;
 
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class IDashboardService
+    public interface IDashboardService
     {
+        Task<DashboardStatsResponse> GetStatsAsync(CancellationToken cancellationToken = default);
+        Task<List<DashboardTrainingStatsResponse>> GetTrainingStatsAsync(CancellationToken cancellationToken = default);
     }
 }

@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Infrastructure.Messaging;
 
-namespace FITSync.Infrastructure.Services.Interfaces
+namespace FITSync.Infrastructure.Services.Interfaces;
+
+public interface IRabbitMQProducer
 {
-    internal class IRabbitMQProducer
-    {
-    }
+    void PublishToEmailQueue(EmailMessage message);
+    Task PublishToEmailQueueAsync(EmailMessage message, CancellationToken cancellationToken = default);
 }

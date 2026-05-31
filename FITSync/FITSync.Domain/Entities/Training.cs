@@ -1,4 +1,4 @@
-﻿using FITSync.Domain.Enums;
+using FITSync.Domain.Enums;
 using FITSync.Domain.Models;
 using System;
 using System.Collections.Generic;

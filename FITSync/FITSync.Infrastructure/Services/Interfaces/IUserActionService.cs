@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class IUserActionService
+    public interface IUserActionService
     {
+        Task LogActionAsync(int userId, string action, string? details = null, CancellationToken cancellationToken = default);
     }
 }

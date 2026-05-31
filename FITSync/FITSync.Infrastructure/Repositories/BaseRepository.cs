@@ -1,5 +1,6 @@
-﻿using FITSync.Infrastructure.Context;
+using FITSync.Infrastructure.Context;
 using FITSync.Infrastructure.Repositories.Interfaces;
+using FITSync.Domain.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -21,12 +22,12 @@ namespace FITSync.Infrastructure.Repositories
             _dbSet = _context.Set<TModel>();
         }
 
-        public async Task<List<TModel>> GetAsync()
+        public virtual async Task<List<TModel>> GetAsync()
         {
             return await _dbSet.ToListAsync();
         }
 
-        public async Task<TModel> GetByIdAsync(int id)
+        public virtual async Task<TModel?> GetByIdAsync(int id)
         {
             return await _dbSet.FindAsync(id);
         }
@@ -47,6 +48,12 @@ namespace FITSync.Infrastructure.Repositories
 
         public async Task DeleteAsync(TModel entity)
         {
+            if (entity is ISoftDeletable soft)
+            {
+                soft.IsDeleted = true;
+                await UpdateAsync(entity);
+                return;
+            }
             _dbSet.Remove(entity);
             await _context.SaveChangesAsync();
         }

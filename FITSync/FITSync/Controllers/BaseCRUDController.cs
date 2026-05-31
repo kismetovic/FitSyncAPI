@@ -1,10 +1,12 @@
-﻿using FITSync.Infrastructure.Services.Interfaces;
+using FITSync.Infrastructure.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FITSync.WebAPI.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
+    [Authorize]
     public class BaseCRUDController<TModelDTO, TInsert, TUpdate> : ControllerBase
         where TModelDTO : class
     {
@@ -23,9 +25,9 @@ namespace FITSync.WebAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        public virtual ActionResult<TModelDTO> GetByIdAsync(int id)
+        public virtual async Task<ActionResult<TModelDTO>> GetByIdAsync(int id)
         {
-            var item = _service.GetByIdAsync(id);
+            var item = await _service.GetByIdAsync(id);
             if (item == null)
             {
                 return NotFound();

@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Domain.Entities;
 
 namespace FITSync.Infrastructure.Repositories.Interfaces
 {
-    internal class IReservationRepository
+    public interface IReservationRepository : IBaseRepository<Reservation>
     {
+        Task<List<Reservation>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
+        Task<List<Reservation>> GetByTrainingIdAsync(int trainingId, CancellationToken cancellationToken = default);
     }
 }

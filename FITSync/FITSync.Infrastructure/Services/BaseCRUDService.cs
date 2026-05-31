@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using FITSync.Infrastructure.Context;
 using FITSync.Infrastructure.Repositories.Interfaces;
 using FITSync.Infrastructure.Services.Interfaces;

@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Domain.Entities;
 
 namespace FITSync.Infrastructure.Repositories.Interfaces
 {
-    internal class IPaymentRepository
+    public interface IPaymentRepository : IBaseRepository<Payment>
     {
+        Task<Payment?> GetByReservationIdAsync(int reservationId, CancellationToken cancellationToken = default);
+        Task<Payment?> GetByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default);
+        Task<List<Payment>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
     }
 }

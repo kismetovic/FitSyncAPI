@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,7 @@ namespace FITSync.Infrastructure.Helpers
 {
     public interface ICaller
     {
-        public string UserId { get; }
-        public string ToString();
+        string? UserId { get; }
+        bool IsAuthenticated { get; }
     }
 }

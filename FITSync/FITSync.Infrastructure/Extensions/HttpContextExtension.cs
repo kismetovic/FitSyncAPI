@@ -1,4 +1,4 @@
-﻿using FITSync.Infrastructure.Authentication;
+using FITSync.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;

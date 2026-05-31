@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Domain.Entities;
 
 namespace FITSync.Infrastructure.Repositories.Interfaces
 {
-    internal class IAdditionalServiceRepository
+    public interface IAdditionalServiceRepository : IBaseRepository<AdditionalService>
     {
     }
 }

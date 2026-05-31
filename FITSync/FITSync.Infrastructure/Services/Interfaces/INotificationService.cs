@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Contracts.Notifications;
 
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class INotificationService
+    public interface INotificationService : IBaseCRUDService<NotificationResponse, NotificationInsertRequest, NotificationUpdateRequest>
     {
+        Task<List<NotificationResponse>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
+        Task<List<NotificationResponse>> GetUnreadByUserIdAsync(int userId, CancellationToken cancellationToken = default);
     }
 }

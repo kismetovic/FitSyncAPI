@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Contracts.Reviews;
 
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class IReviewService
+    public interface IReviewService : IBaseCRUDService<ReviewResponse, ReviewInsertRequest, ReviewUpdateRequest>
     {
+        Task<List<ReviewResponse>> GetByTrainingIdAsync(int trainingId, CancellationToken cancellationToken = default);
+        Task<List<ReviewResponse>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
     }
 }

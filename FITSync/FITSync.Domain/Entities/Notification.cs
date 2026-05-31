@@ -1,4 +1,4 @@
-﻿using FITSync.Domain.Models;
+using FITSync.Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

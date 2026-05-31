@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Contracts.Users;
 
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class IUserService
+    public interface IUserService : IBaseCRUDService<UserResponse, UserInsertRequest, UserUpdateRequest>
     {
+        Task<UserResponse?> GetByUserNameAsync(string userName, CancellationToken cancellationToken = default);
+        Task<UserResponse?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     }
 }

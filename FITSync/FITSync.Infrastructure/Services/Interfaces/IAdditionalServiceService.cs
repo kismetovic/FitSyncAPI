@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Contracts.AdditionalServices;
 
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class IAdditionalServiceService
+    public interface IAdditionalServiceService : IBaseCRUDService<AdditionalServiceResponse, AdditionalServiceInsertRequest, AdditionalServiceUpdateRequest>
     {
     }
 }

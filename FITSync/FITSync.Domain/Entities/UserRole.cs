@@ -1,4 +1,4 @@
-﻿using FITSync.Domain.Entities;
+using FITSync.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;

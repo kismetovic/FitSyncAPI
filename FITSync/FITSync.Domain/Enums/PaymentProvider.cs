@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,8 +8,7 @@ namespace FITSync.Domain.Enums
 {
     public enum PaymentProvider
     {
-        Stripe = 0,
-        PayPal = 1,
-        Cash = 2
+        PayPal = 0,
+        Cash = 1
     }
 }

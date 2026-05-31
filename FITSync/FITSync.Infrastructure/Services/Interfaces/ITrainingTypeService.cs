@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FITSync.Contracts.TrainingTypes;
 
 namespace FITSync.Infrastructure.Services.Interfaces
 {
-    internal class ITrainingTypeService
+    public interface ITrainingTypeService : IBaseCRUDService<TrainingTypeResponse, TrainingTypeInsertRequest, TrainingTypeUpdateRequest>
     {
     }
 }
