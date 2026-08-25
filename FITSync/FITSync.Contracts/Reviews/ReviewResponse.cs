@@ -8,6 +8,7 @@ public class ReviewResponse
     public string? Comment { get; set; }
     public int UserId { get; set; }
     public int TrainingId { get; set; }
+    public int ReservationId { get; set; }
     public string? UserName { get; set; }
     public string? TrainingName { get; set; }
 }
