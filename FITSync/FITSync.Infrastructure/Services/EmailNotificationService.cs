@@ -1,111 +1,83 @@
-using FITSync.Domain.Entities;
-using FITSync.Domain.Enums;
 using FITSync.Infrastructure.Messaging;
+using FITSync.Infrastructure.Notifications;
 using FITSync.Infrastructure.Repositories.Interfaces;
 using FITSync.Infrastructure.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace FITSync.Infrastructure.Services;
 
+/// <summary>
+/// Publishes email work onto RabbitMQ. Nothing here sends mail: FITSync.Worker consumes
+/// the queue in its own container and does the SMTP call.
+/// </summary>
 public class EmailNotificationService : IEmailNotificationService
 {
     private readonly IRabbitMQProducer _producer;
-    private readonly IUserRepository _userRepository;
     private readonly IReservationRepository _reservationRepository;
-    private readonly IPaymentRepository _paymentRepository;
-    private readonly INotificationRepository _notificationRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly INotificationDispatcher _dispatcher;
+    private readonly ILogger<EmailNotificationService> _logger;
 
     public EmailNotificationService(
         IRabbitMQProducer producer,
-        IUserRepository userRepository,
         IReservationRepository reservationRepository,
-        IPaymentRepository paymentRepository,
-        INotificationRepository notificationRepository)
+        IUserRepository userRepository,
+        INotificationDispatcher dispatcher,
+        ILogger<EmailNotificationService> logger)
     {
         _producer = producer;
-        _userRepository = userRepository;
         _reservationRepository = reservationRepository;
-        _paymentRepository = paymentRepository;
-        _notificationRepository = notificationRepository;
+        _userRepository = userRepository;
+        _dispatcher = dispatcher;
+        _logger = logger;
     }
 
-    public Task SendWelcomeEmailAsync(string toEmail, string userName, CancellationToken cancellationToken = default)
-    {
-        var subject = "Welcome to FitSync";
-        var body = $@"
-            <h2>Welcome, {userName}!</h2>
-            <p>Thank you for registering with FitSync. You can now browse trainings and make reservations.</p>
-            <p>Best regards,<br/>The FitSync Team</p>";
-        EnqueueEmailAsync(toEmail, subject, body, true, cancellationToken);
-        return Task.CompletedTask;
-    }
+    public Task SendWelcomeEmailAsync(int userId, string toEmail, string userName, CancellationToken cancellationToken = default)
+        => _dispatcher.DispatchAsync(userId, NotificationTemplates.Welcome(userName), toEmail, true, cancellationToken);
 
-    public Task SendReservationConfirmationAsync(string toEmail, string userName, DateTime reservationDate, string trainingName, CancellationToken cancellationToken = default)
-    {
-        var subject = "Reservation confirmed - FitSync";
-        var body = $@"
-            <h2>Reservation confirmed</h2>
-            <p>Hi {userName},</p>
-            <p>Your reservation has been confirmed.</p>
-            <ul>
-                <li><strong>Training:</strong> {trainingName}</li>
-                <li><strong>Date:</strong> {reservationDate:dd.MM.yyyy HH:mm}</li>
-            </ul>
-            <p>Best regards,<br/>The FitSync Team</p>";
-        EnqueueEmailAsync(toEmail, subject, body, true, cancellationToken);
-        return Task.CompletedTask;
-    }
-
+    /// <summary>
+    /// Reminder for everything the user still owes. The unpaid set now comes from one
+    /// query rather than a payment lookup per reservation.
+    /// </summary>
     public async Task SendPaymentReminderToUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user?.Email == null) return;
-        var reservations = await _reservationRepository.GetByUserIdAsync(userId, cancellationToken);
-        var unpaid = new List<string>();
-        foreach (var r in reservations)
-        {
-            var payment = await _paymentRepository.GetByReservationIdAsync(r.Id, cancellationToken);
-            if (payment == null && r.Status != ReservationStatus.Cancelled)
-                unpaid.Add($"Reservation #{r.Id} - {r.Training?.Name ?? "Training"} on {r.ReservationDate:dd.MM.yyyy}");
-        }
-        if (unpaid.Count > 0)
-        {
-            await SendPaymentReminderAsync(user.Email, user.Name ?? user.UserName ?? user.Email, string.Join("; ", unpaid), cancellationToken);
 
-            await _notificationRepository.InsertAsync(new Notification
-            {
-                UserId = userId,
-                Title = "Podsjetnik za uplatu",
-                Message = $"Imate {unpaid.Count} nepla{(unpaid.Count == 1 ? "ćenu rezervaciju" : "ćene rezervacije")}: {string.Join(", ", unpaid)}",
-                IsRead = false
-            });
-        }
-    }
+        var unpaid = await _reservationRepository.GetUnpaidByUserIdAsync(userId, cancellationToken);
+        if (unpaid.Count == 0) return;
 
-    public Task SendPaymentReminderAsync(string toEmail, string userName, string reservationDetails, CancellationToken cancellationToken = default)
-    {
-        var subject = "Payment reminder - FitSync";
-        var body = $@"
-            <h2>Payment reminder</h2>
-            <p>Hi {userName},</p>
-            <p>This is a reminder that payment is pending for the following reservation:</p>
-            <p>{reservationDetails}</p>
-            <p>Please complete your payment at your earliest convenience.</p>
-            <p>Best regards,<br/>The FitSync Team</p>";
-        EnqueueEmailAsync(toEmail, subject, body, true, cancellationToken);
-        return Task.CompletedTask;
+        var details = unpaid
+            .Select(r => $"#{r.Id} - {r.Training?.Name ?? "Trening"} ({r.ReservationDate:dd.MM.yyyy HH:mm}), {r.TotalPrice:0.00} BAM")
+            .ToList();
+
+        await _dispatcher.DispatchAsync(
+            userId, NotificationTemplates.PaymentReminder(details), user.Email, true, cancellationToken);
     }
 
     public Task SendPasswordResetEmailAsync(string toEmail, string resetLink, CancellationToken cancellationToken = default)
     {
-        var subject = "Reset your password - FitSync";
-        var body = $@"<h2>Password reset</h2><p>Click the link below to reset your password:</p><p><a href=""{resetLink}"">{resetLink}</a></p><p>If you did not request this, please ignore this email.</p><p>Best regards,<br/>The FitSync Team</p>";
-        EnqueueEmailAsync(toEmail, subject, body, true, cancellationToken);
-        return Task.CompletedTask;
+        var body = $@"
+            <h2>Resetovanje lozinke</h2>
+            <p>Kliknite na link ispod da postavite novu lozinku:</p>
+            <p><a href=""{resetLink}"">{resetLink}</a></p>
+            <p>Ako niste Vi zatražili resetovanje, slobodno ignorišite ovu poruku.</p>
+            <p>Srdačan pozdrav,<br/>FitSync tim</p>";
+
+        return EnqueueEmailAsync(toEmail, "Resetovanje lozinke - FitSync", body, true, cancellationToken);
     }
 
     public Task EnqueueEmailAsync(string to, string subject, string body, bool isHtml = true, CancellationToken cancellationToken = default)
     {
-        _producer.PublishToEmailQueueAsync(new EmailMessage { To = to, Subject = subject, Body = body, IsHtml = isHtml }, cancellationToken);
-        return Task.CompletedTask;
+        try
+        {
+            return _producer.PublishToEmailQueueAsync(
+                new EmailMessage { To = to, Subject = subject, Body = body, IsHtml = isHtml }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not enqueue an email to {Email}.", to);
+            return Task.CompletedTask;
+        }
     }
 }
