@@ -67,21 +67,6 @@ Svi osjetljivi podaci upravljaju se putem `.env` fajla kojeg treba exportovati i
 
 Prijava ide na polje `userNameOrEmail`, ne `email`.
 
-Seeder puni **praznu** bazu i ne radi ništa na bazi koja već ima podatke — svaki korak
-ima provjeru postojanja, pa je ponovno pokretanje API-ja bezopasno. Sav sadržaj koji
-korisnik čita je na bosanskom, jer obje aplikacije startaju na tom jeziku.
-
-Osim kataloga (8 tipova treninga, 15 treninga, 3 trenera sa dostupnošću, 5 dodatnih
-usluga, 4 paketa, 10 čestih pitanja i kontakt podrške), seed kreira i stvarnu aktivnost
-za klijenta, tako da nijedan ekran ne otvara prazan: 8 rezervacija koje pokrivaju sve
-statuse, jedan plaćen mjesečni paket sa 2 od 12 iskorištenih termina, tri naplaćene
-uplate (ukupno 174.00 KM), dvije recenzije i četiri notifikacije.
-
-Seedirana aktivnost poštuje ista pravila koja servisi provode, pa u bazi nema stanja koje
-aplikacija sama ne bi mogla proizvesti: rezervacija u statusu `Paid` ili `Completed` ima
-naplaćenu uplatu iza sebe, paket je aktivan samo zato što je plaćen, recenzija postoji
-samo za odrađen termin, a klijent ne drži dva paketa koja pokrivaju iste treninge.
-
 
 
 ---
@@ -99,19 +84,6 @@ Za odobravanje plaćanja na checkout stranici prijavljuje se **personal** (kupac
 |---|---|---|---|
 | Personal (kupac) | **Ovim se plaća.** Njime se prijavljujete kada aplikacija otvori PayPal checkout | `sb-9hysk52646708@personal.example.com` | `4E5g#1L3` |
 
-Business nalogom se **ne kupuje** — on je nalog teretane koji prima uplate i služi za
-prijavu na sandbox dashboard. Pokušaj prijave business nalogom na checkout stranici ne
-prolazi; to je najčešća zamjena.
-
-*Ovim nalogom je uplata i stvarno prošla:* rezervacija od 16.00 KM naplaćena kao 8.18 EUR,
-capture `COMPLETED`, transaction id upisan, rezervacija prešla u „Plaćeno".
-
-> **Zemlja naloga je bitna.** Prvi par sandbox naloga bio je registrovan na **BiH**, i
-> capture je uvijek padao sa `COMPLIANCE_VIOLATION`: narudžba bi uredno došla do
-> `APPROVED`, ali PayPal ne dozvoljava nalogu iz BiH da *primi* uplatu. Isti kvar javljao
-> se i u EUR i u USD, i sa i bez adrese za dostavu — dakle nije do valute ni do zahtjeva,
-> nego do zemlje. Sa **američkim** parom naloga capture prolazi iz prve. Ako praviš nove
-> sandbox naloge, biraj zemlju koja smije primati uplate.
 
 ### Tok plaćanja
 
@@ -123,8 +95,6 @@ capture `COMPLETED`, transaction id upisan, rezervacija prešla u „Plaćeno".
    capture i tek nakon provjere statusa, iznosa, valute i reference upisuje uplatu i
    prebacuje rezervaciju u `Paid`.
 
-Cijene su u KM. PayPal tu valutu ne podržava, pa server konvertuje u eure po fiksnom kursu
-(1 EUR = 1.95583 KM) i prije otvaranja PayPal-a prikaže koliko će stvarno biti naplaćeno.
 
 ### Provjera statusa narudžbe
 
