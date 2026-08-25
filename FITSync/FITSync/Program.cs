@@ -1,14 +1,45 @@
 using FITSync.Infrastructure;
 using FITSync.Infrastructure.Context;
 using FITSync.Infrastructure.Seeding;
+using FITSync.Infrastructure.Services.Interfaces;
+using FITSync.WebAPI.Hubs;
+using FITSync.WebAPI.Middleware;
+using FITSync.WebAPI.RealTime;
 using FITSync.WebAPI.Swagger;
-using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// SignalR replaces the manual refresh button in the mobile app: notifications are pushed
+// to the connected client as soon as the server creates them.
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
+
 builder.Services.AddControllers();
+
+// Model validation failures answer in the same shape as every other error response.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .ToDictionary(
+                e => e.Key,
+                e => e.Value!.Errors.Select(x => x.ErrorMessage).ToArray());
+
+        return new BadRequestObjectResult(new
+        {
+            error = "VALIDATION_FAILED",
+            message = "One or more fields are invalid.",
+            errors
+        });
+    };
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -32,9 +63,10 @@ builder.Services.AddCors(options =>
             ?? Array.Empty<string>();
 
         if (origins.Length > 0)
-            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+            // AllowCredentials is required for the SignalR handshake to carry auth.
+            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         else
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            policy.SetIsOriginAllowed(_ => true).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
 
@@ -70,19 +102,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async ctx =>
-    {
-        ctx.Response.StatusCode = 500;
-        ctx.Response.ContentType = "application/json";
-        var error = ctx.Features.Get<IExceptionHandlerFeature>();
-        var message = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker")
-            ? error?.Error.Message ?? "An unexpected error occurred."
-            : "An unexpected error occurred.";
-        await ctx.Response.WriteAsJsonAsync(new { error = message });
-    });
-});
+// Must sit ahead of everything that can throw, so domain exceptions become 4xx responses
+// instead of a generic 500.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (!app.Environment.IsProduction())
 {
@@ -97,5 +119,6 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationsHub>(NotificationsHub.Route);
 
 app.Run();
