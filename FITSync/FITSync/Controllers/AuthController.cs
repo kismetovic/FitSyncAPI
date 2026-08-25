@@ -26,22 +26,27 @@ namespace FITSync.WebAPI.Controllers
         [Authorize]
         public async Task<ActionResult<UserResponse>> GetMe(CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(_caller.UserId))
-                return Unauthorized();
-            var user = await _userService.GetByIdAsync(int.Parse(_caller.UserId));
-            if (user == null)
-                return NotFound();
-            return Ok(user);
+            var user = await _userService.GetByIdAsync(_caller.RequireUserId());
+            return user == null ? NotFound() : Ok(user);
         }
 
+        /// <summary>
+        /// A deactivated account is refused with 403 and a clear message rather than being
+        /// issued a token. Wrong credentials still return a generic 401.
+        /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
         {
-            var token = await _authService.LoginAsync(request.UserNameOrEmail, request.Password, cancellationToken);
-            if (token == null)
-                return Unauthorized("Invalid credentials.");
-            return Ok(new LoginResponse { Token = token });
+            var outcome = await _authService.LoginAsync(request.UserNameOrEmail, request.Password, cancellationToken);
+
+            if (outcome.IsDisabled)
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "ACCOUNT_DISABLED", message = outcome.Error });
+
+            if (!outcome.Succeeded)
+                return Unauthorized(new { error = "INVALID_CREDENTIALS", message = outcome.Error ?? "Invalid credentials." });
+
+            return Ok(new LoginResponse { Token = outcome.Token!, Roles = outcome.Roles });
         }
 
         [HttpPost("register")]
@@ -56,8 +61,10 @@ namespace FITSync.WebAPI.Controllers
                 request.Surname,
                 request.PhoneNumber,
                 cancellationToken);
+
             if (user == null)
-                return BadRequest("Registration failed (e.g. username or email already in use).");
+                return BadRequest(new { error = "REGISTRATION_FAILED", message = "Registration failed. The username or email may already be in use." });
+
             return Ok(new RegisterResponse
             {
                 Id = user.Id,
@@ -70,22 +77,25 @@ namespace FITSync.WebAPI.Controllers
         [Authorize]
         public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(_caller.UserId)) return Unauthorized();
-            if (request.NewPassword != request.ConfirmNewPassword)
-                return BadRequest(new { message = "New password and confirmation do not match." });
             var (ok, error) = await _authService.ChangePasswordAsync(
-                int.Parse(_caller.UserId), request.CurrentPassword, request.NewPassword, cancellationToken);
+                _caller.RequireUserId(), request.CurrentPassword, request.NewPassword, cancellationToken);
+
             if (!ok)
-                return BadRequest(new { message = error ?? "Password change failed. Check your current password." });
+                return BadRequest(new { error = "PASSWORD_CHANGE_FAILED", message = error ?? "Password change failed. Check your current password." });
+
             return Ok(new { message = "Password changed successfully." });
         }
 
+        /// <summary>
+        /// Always answers the same way, so the endpoint cannot be used to discover which
+        /// email addresses are registered.
+        /// </summary>
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken = default)
         {
-            var ok = await _authService.ForgotPasswordAsync(request.Email, request.ResetBaseUrl ?? "", cancellationToken);
-            return Ok(new { Message = "If the email exists, a reset link has been sent." });
+            await _authService.ForgotPasswordAsync(request.Email, request.ResetBaseUrl ?? "", cancellationToken);
+            return Ok(new { message = "If the email exists, a reset link has been sent." });
         }
 
         [HttpPost("reset-password")]
@@ -94,8 +104,9 @@ namespace FITSync.WebAPI.Controllers
         {
             var ok = await _authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword, cancellationToken);
             if (!ok)
-                return BadRequest("Invalid or expired reset token.");
-            return Ok(new { Message = "Password has been reset." });
+                return BadRequest(new { error = "INVALID_RESET_TOKEN", message = "Invalid or expired reset token." });
+
+            return Ok(new { message = "Password has been reset." });
         }
     }
 }

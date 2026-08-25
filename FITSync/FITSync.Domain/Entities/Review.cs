@@ -1,9 +1,4 @@
 using FITSync.Domain.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FITSync.Domain.Entities
 {
@@ -15,5 +10,12 @@ namespace FITSync.Domain.Entities
         public virtual User User { get; set; } = null!;
         public int TrainingId { get; set; }
         public virtual Training Training { get; set; } = null!;
+
+        /// <summary>
+        /// The attended reservation this review is about. Required, so a review can only
+        /// exist for a training the user actually paid for and completed.
+        /// </summary>
+        public int ReservationId { get; set; }
+        public virtual Reservation Reservation { get; set; } = null!;
     }
 }

@@ -14,6 +14,8 @@ public class TrainingResponse
     public TrainingDifficulty Difficulty { get; set; }
     public int TrainingTypeId { get; set; }
     public TrainingTypeSummaryResponse? TrainingType { get; set; }
+    public int? TrainerId { get; set; }
+    public string? TrainerName { get; set; }
     public double? AverageRating { get; set; }
     public int ReviewCount { get; set; }
 }

@@ -1,4 +1,5 @@
 using FITSync.Contracts.Dashboard;
+using FITSync.Domain.Definitions;
 using FITSync.Infrastructure.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ namespace FITSync.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = RoleDefinition.Administrator)]
     public class DashboardController : ControllerBase
     {
         private readonly IDashboardService _dashboardService;
@@ -19,16 +20,10 @@ namespace FITSync.WebAPI.Controllers
 
         [HttpGet("stats")]
         public async Task<ActionResult<DashboardStatsResponse>> GetStats(CancellationToken cancellationToken = default)
-        {
-            var stats = await _dashboardService.GetStatsAsync(cancellationToken);
-            return Ok(stats);
-        }
+            => Ok(await _dashboardService.GetStatsAsync(cancellationToken));
 
         [HttpGet("training-stats")]
         public async Task<ActionResult<List<DashboardTrainingStatsResponse>>> GetTrainingStats(CancellationToken cancellationToken = default)
-        {
-            var list = await _dashboardService.GetTrainingStatsAsync(cancellationToken);
-            return Ok(list);
-        }
+            => Ok(await _dashboardService.GetTrainingStatsAsync(cancellationToken));
     }
 }

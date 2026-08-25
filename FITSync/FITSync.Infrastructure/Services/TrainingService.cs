@@ -1,4 +1,5 @@
 using AutoMapper;
+using FITSync.Contracts.Common;
 using FITSync.Contracts.Trainings;
 using FITSync.Domain.Entities;
 using FITSync.Infrastructure.Repositories.Interfaces;
@@ -43,26 +44,33 @@ namespace FITSync.Infrastructure.Services
             return list;
         }
 
-        public async Task<List<TrainingResponse>> SearchAsync(TrainingSearchRequest request, CancellationToken cancellationToken = default)
+        public async Task<PagedResult<TrainingResponse>> SearchAsync(TrainingSearchRequest request, CancellationToken cancellationToken = default)
         {
-            var entities = await _trainingRepository.SearchAsync(
-                request.Name, request.MinPrice, request.MaxPrice, request.TrainingTypeId, request.Difficulty, cancellationToken);
-            var list = _mapper.Map<List<TrainingResponse>>(entities);
+            var (items, total) = await _trainingRepository.SearchAsync(
+                request.Name, request.MinPrice, request.MaxPrice, request.TrainingTypeId,
+                request.TrainerId, request.Difficulty, request.Skip, request.Take, cancellationToken);
+
+            var list = _mapper.Map<List<TrainingResponse>>(items);
             await EnrichWithReviewStatsAsync(list);
-            return list;
+            return PagedResult<TrainingResponse>.Create(list, request.Page, request.PageSize, total);
         }
 
+        /// <summary>
+        /// One batched query plus one stats query, regardless of how many ids are asked for.
+        /// The previous implementation issued two queries per id.
+        /// </summary>
         public async Task<List<TrainingResponse>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default)
         {
             var idList = ids.Distinct().ToList();
             if (idList.Count == 0) return new List<TrainingResponse>();
-            var list = new List<TrainingResponse>();
-            foreach (var id in idList)
-            {
-                var r = await GetByIdAsync(id);
-                if (r != null) list.Add(r);
-            }
-            return list;
+
+            var entities = await _trainingRepository.GetByIdsAsync(idList, cancellationToken);
+            var list = _mapper.Map<List<TrainingResponse>>(entities);
+            await EnrichWithReviewStatsAsync(list);
+
+            // Preserve the caller's ordering, which for the recommender is the ranking.
+            var order = idList.Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
+            return list.OrderBy(t => order.TryGetValue(t.Id, out var i) ? i : int.MaxValue).ToList();
         }
 
         private async Task EnrichWithReviewStatsAsync(List<TrainingResponse> list)

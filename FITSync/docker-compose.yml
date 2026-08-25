@@ -32,6 +32,7 @@ services:
       retries: 15
       start_period: 30s
 
+  # Publishes email messages onto RabbitMQ. It never sends mail itself.
   api:
     build:
       context: .
@@ -47,7 +48,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=FitSyncDb;User Id=sa;Password=${SA_PASSWORD};MultipleActiveResultSets=true;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=${DB_NAME};User Id=sa;Password=${SA_PASSWORD};MultipleActiveResultSets=true;TrustServerCertificate=True
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - JwtSettings__ValidIssuer=${JWT_ISSUER}
       - JwtSettings__ValidAudience=${JWT_AUDIENCE}
@@ -56,7 +57,34 @@ services:
       - RabbitMQ__Port=5672
       - RabbitMQ__UserName=${RABBITMQ_USER}
       - RabbitMQ__Password=${RABBITMQ_PASS}
-      - RabbitMQ__EmailQueueName=fitsync-emails
+      - RabbitMQ__EmailQueueName=${RABBITMQ_EMAIL_QUEUE}
+      - PayPal__ClientId=${PAYPAL_CLIENT_ID}
+      - PayPal__ClientSecret=${PAYPAL_CLIENT_SECRET}
+      - PayPal__BaseUrl=${PAYPAL_BASE_URL}
+      - PayPal__ReturnUrl=${PAYPAL_RETURN_URL}
+      - PayPal__CancelUrl=${PAYPAL_CANCEL_URL}
+      - Cors__AllowedOrigins=${CORS_ALLOWED_ORIGINS}
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  # Separate microservice: consumes the RabbitMQ email queue and delivers the messages
+  # over SMTP. It has no database access and no HTTP surface of its own.
+  worker:
+    build:
+      context: .
+      dockerfile: FITSync.Worker/Dockerfile
+    container_name: fitsync-worker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - DOTNET_ENVIRONMENT=Docker
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASS}
+      - RabbitMQ__EmailQueueName=${RABBITMQ_EMAIL_QUEUE}
       - Smtp__Host=${SMTP_HOST}
       - Smtp__Port=${SMTP_PORT}
       - Smtp__FromEmail=${SMTP_FROM_EMAIL}
@@ -64,10 +92,6 @@ services:
       - Smtp__UserName=${SMTP_USERNAME}
       - Smtp__Password=${SMTP_PASSWORD}
       - Smtp__EnableSsl=${SMTP_ENABLE_SSL}
-      - PayPal__ClientId=${PAYPAL_CLIENT_ID}
-      - PayPal__ClientSecret=${PAYPAL_CLIENT_SECRET}
-      - PayPal__BaseUrl=${PAYPAL_BASE_URL}
-      - Cors__AllowedOrigins=http://localhost:3000,https://localhost:3000,http://localhost:4200,https://localhost:4200,http://localhost:5000
     env_file:
       - .env
     restart: unless-stopped

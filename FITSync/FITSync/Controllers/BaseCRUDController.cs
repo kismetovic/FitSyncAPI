@@ -1,18 +1,25 @@
+using FITSync.Contracts.Common;
 using FITSync.Infrastructure.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FITSync.WebAPI.Controllers
 {
+    /// <summary>
+    /// Generic CRUD scaffold. It deliberately carries no role attributes on its actions:
+    /// every concrete controller overrides each action and states its own authorisation
+    /// rule, so the access policy for a resource is readable in one place rather than
+    /// inherited implicitly.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class BaseCRUDController<TModelDTO, TInsert, TUpdate> : ControllerBase
+    public abstract class BaseCRUDController<TModelDTO, TInsert, TUpdate> : ControllerBase
         where TModelDTO : class
     {
         protected readonly IBaseCRUDService<TModelDTO, TInsert, TUpdate> _service;
 
-        public BaseCRUDController(IBaseCRUDService<TModelDTO, TInsert, TUpdate> service)
+        protected BaseCRUDController(IBaseCRUDService<TModelDTO, TInsert, TUpdate> service)
         {
             _service = service;
         }
@@ -24,7 +31,7 @@ namespace FITSync.WebAPI.Controllers
             return Ok(list);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public virtual async Task<ActionResult<TModelDTO>> GetByIdAsync(int id)
         {
             var item = await _service.GetByIdAsync(id);
@@ -42,26 +49,34 @@ namespace FITSync.WebAPI.Controllers
             return Ok(result);
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         public virtual async Task<ActionResult<TModelDTO>> UpdateAsync(int id, [FromBody] TUpdate request)
         {
             var result = await _service.UpdateAsync(id, request);
             if (result == null)
             {
-                return BadRequest("Update failed or entity not found.");
+                return NotFound();
             }
             return Ok(result);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         public virtual async Task<ActionResult> DeleteAsync(int id)
         {
             var result = await _service.DeleteAsync(id);
             if (!result)
             {
-                return BadRequest("Could not delete entity.");
+                return BadRequest(new { error = "DELETE_FAILED", message = "Could not delete the entity." });
             }
-            return Ok("Entity deleted successfully.");
+            return Ok(new { message = "Entity deleted successfully." });
         }
+
+        /// <summary>Applies paging over the generic list read when the service supports it.</summary>
+        protected static PagedResult<T> Page<T>(List<T> items, PagedRequest paging)
+            => PagedResult<T>.Create(
+                items.Skip(paging.Skip).Take(paging.Take).ToList(),
+                paging.Page,
+                paging.PageSize,
+                items.Count);
     }
 }

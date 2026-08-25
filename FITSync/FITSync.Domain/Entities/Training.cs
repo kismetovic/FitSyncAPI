@@ -1,10 +1,5 @@
 using FITSync.Domain.Enums;
 using FITSync.Domain.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FITSync.Domain.Entities
 {
@@ -18,6 +13,10 @@ namespace FITSync.Domain.Entities
         public TrainingDifficulty Difficulty { get; set; }
         public int TrainingTypeId { get; set; }
         public virtual TrainingType TrainingType { get; set; } = null!;
+
+        public int? TrainerId { get; set; }
+        public virtual Trainer? Trainer { get; set; }
+
         public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
     }

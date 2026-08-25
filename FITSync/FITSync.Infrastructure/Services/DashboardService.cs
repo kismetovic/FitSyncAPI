@@ -1,5 +1,4 @@
 using FITSync.Contracts.Dashboard;
-using FITSync.Domain.Enums;
 using FITSync.Infrastructure.Repositories.Interfaces;
 using FITSync.Infrastructure.Services.Interfaces;
 
@@ -24,40 +23,43 @@ namespace FITSync.Infrastructure.Services
             _paymentRepository = paymentRepository;
         }
 
+        /// <summary>
+        /// Four COUNT/SUM queries. The previous version loaded every user, training,
+        /// reservation and payment into memory just to count them.
+        /// </summary>
         public async Task<DashboardStatsResponse> GetStatsAsync(CancellationToken cancellationToken = default)
         {
-            var users = await _userRepository.GetAsync();
-            var trainings = await _trainingRepository.GetAsync();
-            var reservations = await _reservationRepository.GetAsync();
-            var payments = await _paymentRepository.GetAsync();
+            var stats = await _reservationRepository.GetStatsByTrainingAsync(DateTime.UtcNow, cancellationToken);
 
             return new DashboardStatsResponse
             {
-                TotalUsers = users.Count,
-                TotalTrainings = trainings.Count,
-                TotalReservations = reservations.Count,
-                TotalRevenue = payments.Sum(p => p.Amount)
+                TotalUsers = await _userRepository.CountAsync(cancellationToken),
+                TotalTrainings = await _trainingRepository.CountAsync(cancellationToken),
+                TotalReservations = stats.Values.Sum(v => v.Total),
+                TotalRevenue = await _paymentRepository.GetTotalCapturedRevenueAsync(cancellationToken)
             };
         }
 
+        /// <summary>
+        /// One grouped query for all trainings. The previous version ran a separate
+        /// reservation query for every single training.
+        /// </summary>
         public async Task<List<DashboardTrainingStatsResponse>> GetTrainingStatsAsync(CancellationToken cancellationToken = default)
         {
             var trainings = await _trainingRepository.GetAsync();
-            var now = DateTime.UtcNow;
-            var result = new List<DashboardTrainingStatsResponse>();
-            foreach (var t in trainings)
+            var stats = await _reservationRepository.GetStatsByTrainingAsync(DateTime.UtcNow, cancellationToken);
+
+            return trainings.Select(t =>
             {
-                var reservations = await _reservationRepository.GetByTrainingIdAsync(t.Id, cancellationToken);
-                var futureReservations = reservations.Where(r => r.ReservationDate >= now && r.Status != ReservationStatus.Cancelled).OrderBy(r => r.ReservationDate).ToList();
-                result.Add(new DashboardTrainingStatsResponse
+                stats.TryGetValue(t.Id, out var s);
+                return new DashboardTrainingStatsResponse
                 {
                     TrainingId = t.Id,
                     TrainingName = t.Name,
-                    ReservationsCount = reservations.Count,
-                    NextTerm = futureReservations.FirstOrDefault()?.ReservationDate
-                });
-            }
-            return result;
+                    ReservationsCount = s.Total,
+                    NextTerm = s.NextTerm
+                };
+            }).ToList();
         }
     }
 }
