@@ -287,6 +287,11 @@ namespace FITSync.Infrastructure.Services
                 payment.ConfirmedByUserId = adminUserId;
                 payment.TransactionId = $"CASH-{reservation.Id}-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
+                // Cash settles the booking, so any PayPal order still hanging around for
+                // it is now dead. Left Pending it would keep inviting a capture attempt,
+                // and the database allows only one captured payment per reservation.
+                await AbandonOtherPendingAsync(reservation.Id, payment, cancellationToken);
+
                 if (payment.Id == 0)
                     await _context.Payments.AddAsync(payment, cancellationToken);
 
@@ -634,6 +639,33 @@ namespace FITSync.Infrastructure.Services
                 MembershipStatus = membership.Status,
                 Payment = _mapper.Map<PaymentResponse>(payment)
             };
+
+        /// <summary>
+        /// Marks every other unfinished payment for a reservation as failed once one of
+        /// them has been captured.
+        ///
+        /// This is what left a booking looking half-paid: a PayPal order was opened, the
+        /// approval never completed, and staff recorded cash instead. The PayPal row
+        /// stayed Pending with an empty transaction id, so the reservation appeared to
+        /// carry two payments, one of them with nothing in it.
+        /// </summary>
+        private async Task AbandonOtherPendingAsync(
+            int reservationId, Payment keep, CancellationToken cancellationToken)
+        {
+            var stale = await _context.Payments
+                .Where(p => p.ReservationId == reservationId
+                            && p.Status == PaymentStatus.Pending
+                            && !p.IsDeleted)
+                .ToListAsync(cancellationToken);
+
+            foreach (var p in stale)
+            {
+                if (p.Id != 0 && p.Id == keep.Id) continue;
+
+                p.Status = PaymentStatus.Failed;
+                p.FailureReason = "Rezervacija je naplaćena drugim načinom plaćanja.";
+            }
+        }
 
         private async Task<Reservation> LoadPayableReservationAsync(
             int callerUserId,

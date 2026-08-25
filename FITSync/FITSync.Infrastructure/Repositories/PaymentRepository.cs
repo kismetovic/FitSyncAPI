@@ -64,9 +64,15 @@ namespace FITSync.Infrastructure.Repositories
             // A user's payments are the ones for their bookings *and* the ones for the
             // packages they bought. Only the first half was matched here, which is why a
             // bought package never appeared under "my payments".
+            //
+            // Failed attempts are left out: an abandoned PayPal order is not a payment,
+            // and listing them put rows with a blank transaction id on the client's
+            // receipts screen, which read as a bug. Administrators still see everything
+            // through the search endpoint, so nothing is hidden from the audit trail.
             return await BaseQuery()
-                .Where(p => (p.Reservation != null && p.Reservation.UserId == userId)
-                            || (p.UserMembership != null && p.UserMembership.UserId == userId))
+                .Where(p => p.Status != PaymentStatus.Failed
+                            && ((p.Reservation != null && p.Reservation.UserId == userId)
+                                || (p.UserMembership != null && p.UserMembership.UserId == userId)))
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync(cancellationToken);
         }

@@ -84,9 +84,68 @@ samo za odrađen termin, a klijent ne drži dva paketa koja pokrivaju iste treni
 
 
 
-Za PayPal testiranje koristiti account:
-email: sb-k1g47w46242586@business.example.com
-password: .O<)H#7m
+---
+
+## PayPal (sandbox)
+
+Plaćanje ide kroz PayPal **sandbox**, ne kroz pravi PayPal — ništa se stvarno ne
+naplaćuje.
+
+Ključevi aplikacije (trgovca) su u `.env` — `PAYPAL_CLIENT_ID` i `PAYPAL_CLIENT_SECRET`.
+
+Za odobravanje plaćanja na checkout stranici prijavljuje se **personal** (kupac) nalog:
+
+| Nalog | Uloga | Email | Lozinka |
+|---|---|---|---|
+| Personal (kupac) | **Ovim se plaća.** Njime se prijavljujete kada aplikacija otvori PayPal checkout | `sb-9hysk52646708@personal.example.com` | `4E5g#1L3` |
+
+Business nalogom se **ne kupuje** — on je nalog teretane koji prima uplate i služi za
+prijavu na sandbox dashboard. Pokušaj prijave business nalogom na checkout stranici ne
+prolazi; to je najčešća zamjena.
+
+*Ovim nalogom je uplata i stvarno prošla:* rezervacija od 16.00 KM naplaćena kao 8.18 EUR,
+capture `COMPLETED`, transaction id upisan, rezervacija prešla u „Plaćeno".
+
+> **Zemlja naloga je bitna.** Prvi par sandbox naloga bio je registrovan na **BiH**, i
+> capture je uvijek padao sa `COMPLIANCE_VIOLATION`: narudžba bi uredno došla do
+> `APPROVED`, ali PayPal ne dozvoljava nalogu iz BiH da *primi* uplatu. Isti kvar javljao
+> se i u EUR i u USD, i sa i bez adrese za dostavu — dakle nije do valute ni do zahtjeva,
+> nego do zemlje. Sa **američkim** parom naloga capture prolazi iz prve. Ako praviš nove
+> sandbox naloge, biraj zemlju koja smije primati uplate.
+
+### Tok plaćanja
+
+1. Aplikacija zove `POST /api/Payments/paypal/create-order` sa **samo** `reservationId`.
+   Server čita iznos iz rezervacije i otvara narudžbu kod PayPal-a.
+2. Aplikacija otvara zvanični `approvalUrl` u sistemskom pregledniku. Klijent se prijavljuje
+   svojim PayPal nalogom — aplikacija nikada ne vidi ni ne traži tu lozinku.
+3. Povratak u aplikaciju je signal da je korisnik gotov: provjera kreće sama, server radi
+   capture i tek nakon provjere statusa, iznosa, valute i reference upisuje uplatu i
+   prebacuje rezervaciju u `Paid`.
+
+Cijene su u KM. PayPal tu valutu ne podržava, pa server konvertuje u eure po fiksnom kursu
+(1 EUR = 1.95583 KM) i prije otvaranja PayPal-a prikaže koliko će stvarno biti naplaćeno.
+
+### Provjera statusa narudžbe
+
+Ako plaćanje ne prođe, status narudžbe se može provjeriti direktno kod PayPal-a, bez
+prijave na bilo koji nalog — ključevima iz `.env`:
+
+```bash
+TOKEN=$(curl -s -u "$PAYPAL_CLIENT_ID:$PAYPAL_CLIENT_SECRET" \
+  -d "grant_type=client_credentials" \
+  https://api-m.sandbox.paypal.com/v1/oauth2/token | jq -r .access_token)
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://api-m.sandbox.paypal.com/v2/checkout/orders/<ORDER_ID> | jq .status
+```
+
+| Status | Značenje |
+|---|---|
+| `CREATED` | Narudžba je otvorena, klijent je **nije odobrio** — ništa nije naplaćeno |
+| `APPROVED` | Klijent je odobrio, ali capture još nije urađen |
+| `COMPLETED` | Capture je prošao, uplata je evidentirana |
+
 ---
 
 ## Struktura projekta

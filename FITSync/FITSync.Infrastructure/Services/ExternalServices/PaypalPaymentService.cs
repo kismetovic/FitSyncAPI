@@ -81,6 +81,28 @@ public class PaypalPaymentService : IPayPalPaymentService
                 "PAYER_ACTION_REQUIRED",
                 "PayPal requires an extra confirmation. Open PayPal and finish the payment."),
 
+            // PayPal blocked the transaction at its end. In sandbox this is almost
+            // always the test accounts themselves - a buyer or merchant account that
+            // cannot transact in the order currency - rather than anything the caller
+            // did wrong. Either way it is a refusal, not an outage, so it must not be
+            // reported as "external service unavailable".
+            "COMPLIANCE_VIOLATION" => new BusinessRuleException(
+                "COMPLIANCE_VIOLATION",
+                "PayPal refused this transaction. The payment was not taken. " +
+                "Please use a different payment method or contact the gym."),
+
+            "PAYEE_ACCOUNT_RESTRICTED" => new BusinessRuleException(
+                "PAYEE_ACCOUNT_RESTRICTED",
+                "The gym's PayPal account cannot accept this payment right now."),
+
+            "CURRENCY_NOT_SUPPORTED" => new BusinessRuleException(
+                "CURRENCY_NOT_SUPPORTED",
+                "PayPal does not support this currency for one of the accounts involved."),
+
+            "TRANSACTION_REFUSED" => new BusinessRuleException(
+                "TRANSACTION_REFUSED",
+                "PayPal refused this transaction. The payment was not taken."),
+
             // Anything else genuinely is an upstream fault.
             _ => new HttpRequestException(
                 $"PayPal {operation} failed with status {status}" +
@@ -112,10 +134,17 @@ public class PaypalPaymentService : IPayPalPaymentService
             },
             application_context = new
             {
-                return_url = string.IsNullOrWhiteSpace(_settings.ReturnUrl) ? "https://example.com/paypal/return" : _settings.ReturnUrl,
-                cancel_url = string.IsNullOrWhiteSpace(_settings.CancelUrl) ? "https://example.com/paypal/cancel" : _settings.CancelUrl,
+                // Falling back to example.com left the client staring at a placeholder
+                // page after paying, with no way back and no idea anything was pending.
+                return_url = string.IsNullOrWhiteSpace(_settings.ReturnUrl) ? "fitsync://paypal/return" : _settings.ReturnUrl,
+                cancel_url = string.IsNullOrWhiteSpace(_settings.CancelUrl) ? "fitsync://paypal/cancel" : _settings.CancelUrl,
                 user_action = "PAY_NOW",
-                brand_name = "FITSync"
+                brand_name = "FITSync",
+
+                // A training session is not posted anywhere, so the checkout should
+                // neither ask for nor display a delivery address. Without this PayPal
+                // showed "Ship to ..." above a gym booking, which is simply wrong.
+                shipping_preference = "NO_SHIPPING"
             }
         };
 
